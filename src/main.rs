@@ -1,11 +1,6 @@
-fn main() {
-    println!("Hello, world!");
-}
+mod day1;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_testing() {
-        assert_eq!(1, 1);
-    }
+fn main() {
+    println!("Part 1: {}", day1::solve1("./data/day1.txt"));
+    println!("Part 1: {}", day1::solve2("./data/day1.txt"));
 }
