@@ -22,11 +22,12 @@ where
     parse(filename).and_then(|reports| Ok(reports.iter().filter(|r| r.safe()).count()))
 }
 
-pub fn solve2<P>(filename: P) -> Result<i32>
+pub fn solve2<P>(filename: P) -> Result<usize>
 where
     P: AsRef<Path>,
 {
-    Ok(0)
+    parse(filename)
+        .and_then(|reports| Ok(reports.iter().filter(|r| r.safe_with_dampener()).count()))
 }
 
 fn parse<P: AsRef<Path>>(filename: P) -> Result<Vec<Report>> {
@@ -59,6 +60,29 @@ impl Report {
             prev = *curr
         }
         true
+    }
+
+    fn safe_with_dampener(&self) -> bool {
+        if self.safe() {
+            return true;
+        }
+
+        // see if we can get a safe set by removing one level
+
+        for i in 0..self.levels.len() {
+            let r = Report {
+                levels: self
+                    .levels
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, v)| if idx == i { None } else { Some(*v) })
+                    .collect(),
+            };
+            if r.safe() {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -93,6 +117,17 @@ mod tests {
         assert_eq!(false, parse_line("1 3 2 4 5")?.safe());
         assert_eq!(false, parse_line("8 6 4 4 1")?.safe());
         assert_eq!(true, parse_line("1 3 6 7 9")?.safe());
+        Ok(())
+    }
+
+    #[test]
+    fn test_safe_with_dampener() -> Result<()> {
+        assert_eq!(true, parse_line("7 6 4 2 1")?.safe_with_dampener());
+        assert_eq!(false, parse_line("1 2 7 8 9")?.safe_with_dampener());
+        assert_eq!(false, parse_line("9 7 6 2 1")?.safe_with_dampener());
+        assert_eq!(true, parse_line("1 3 2 4 5")?.safe_with_dampener());
+        assert_eq!(true, parse_line("8 6 4 4 1")?.safe_with_dampener());
+        assert_eq!(true, parse_line("1 3 6 7 9")?.safe_with_dampener());
         Ok(())
     }
 }
