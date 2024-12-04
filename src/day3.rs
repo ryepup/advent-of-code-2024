@@ -5,10 +5,6 @@ use std::{
     path::Path,
 };
 
-use crate::util;
-// Define our error types. These may be customized for our error handling cases.
-// Now we will be able to write our own errors, defer to an underlying error
-// implementation, or do something in between.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Day3Error;
 
@@ -35,50 +31,90 @@ enum ParserState {
 impl ParserState {
     fn next(&self, c: char) -> Self {
         match (c, self) {
-            ('m', _) => ParserState::M,
-            ('u', ParserState::M) => ParserState::U,
-            ('l', ParserState::U) => ParserState::L,
-            ('(', ParserState::L) => ParserState::OpenParen,
-            (x, ParserState::OpenParen) if char::is_ascii_digit(&x) => {
-                ParserState::FirstNumber(x.to_string())
-            }
-            (x, ParserState::FirstNumber(s)) if char::is_ascii_digit(&x) => {
+            ('m', _) => Self::M,
+            ('u', Self::M) => Self::U,
+            ('l', Self::U) => Self::L,
+            ('(', Self::L) => Self::OpenParen,
+            (x, Self::OpenParen) if char::is_ascii_digit(&x) => Self::FirstNumber(x.to_string()),
+            (x, Self::FirstNumber(s)) if char::is_ascii_digit(&x) => {
                 let mut i_dont_understand_refs = s.clone();
                 i_dont_understand_refs.push(x);
-                ParserState::FirstNumber(i_dont_understand_refs)
+                Self::FirstNumber(i_dont_understand_refs)
             }
-            (',', ParserState::FirstNumber(s)) => match s.parse::<i32>() {
-                Ok(a) => ParserState::Comma(a),
-                _ => ParserState::Empty,
+            (',', Self::FirstNumber(s)) => match s.parse::<i32>() {
+                Ok(a) => Self::Comma(a),
+                _ => Self::Empty,
             },
-            (x, ParserState::Comma(n)) if char::is_ascii_digit(&x) => {
-                ParserState::SecondNumber(*n, x.to_string())
+            (x, Self::Comma(n)) if char::is_ascii_digit(&x) => {
+                Self::SecondNumber(*n, x.to_string())
             }
-            (x, ParserState::SecondNumber(a, s)) if char::is_ascii_digit(&x) => {
+            (x, Self::SecondNumber(a, s)) if char::is_ascii_digit(&x) => {
                 let mut i_dont_understand_refs = s.clone();
                 i_dont_understand_refs.push(x);
-                ParserState::SecondNumber(*a, i_dont_understand_refs)
+                Self::SecondNumber(*a, i_dont_understand_refs)
             }
-            (')', ParserState::SecondNumber(a, s)) => match s.parse::<i32>() {
-                Ok(b) => ParserState::CloseParen(a * b),
-                _ => ParserState::Empty,
+            (')', Self::SecondNumber(a, s)) => match s.parse::<i32>() {
+                Ok(b) => Self::CloseParen(a * b),
+                _ => Self::Empty,
             },
-            _ => ParserState::Empty,
+            _ => Self::Empty,
         }
     }
 }
 
 pub fn solve1(filename: impl AsRef<Path>) -> Result<i32> {
-    if let Ok(file) = File::open(filename) {
-        let mut state = ParserState::Empty;
-        let mut total = 0;
-        let chars = io::BufReader::new(file)
-            .bytes()
-            .flatten()
-            .map(|b| char::from_u32(b.into()))
-            .flatten();
-        for b in chars {
-            state = match state.next(b) {
+    let mut state = ParserState::Empty;
+    let mut total = 0;
+
+    for b in chars(filename)? {
+        state = match state.next(b) {
+            ParserState::CloseParen(n) => {
+                total += n;
+                ParserState::Empty
+            }
+            s => s,
+        }
+    }
+    Ok(total)
+}
+
+enum EnableParserState {
+    Empty,
+    D,
+    O,
+    N,
+    Apostrophe,
+    T,
+    OpenParen(bool),
+    CloseParen(bool),
+}
+
+impl EnableParserState {
+    fn next(&self, c: char) -> Self {
+        match (c, self) {
+            ('d', Self::Empty) => Self::D,
+            ('o', Self::D) => Self::O,
+            ('(', Self::O) => Self::OpenParen(true),
+            (')', Self::OpenParen(e)) => Self::CloseParen(*e),
+            ('n', Self::O) => Self::N,
+            ('\'', Self::N) => Self::Apostrophe,
+            ('t', Self::Apostrophe) => Self::T,
+            ('(', Self::T) => Self::OpenParen(false),
+            _ => Self::Empty,
+        }
+    }
+}
+
+pub fn solve2(filename: impl AsRef<Path>) -> Result<i32> {
+    let mut mul_parser = ParserState::Empty;
+    let mut enable_parser = EnableParserState::Empty;
+
+    let mut total = 0;
+    let mut enabled = true;
+
+    for b in chars(filename)? {
+        if enabled {
+            mul_parser = match mul_parser.next(b) {
                 ParserState::CloseParen(n) => {
                     total += n;
                     ParserState::Empty
@@ -86,12 +122,26 @@ pub fn solve1(filename: impl AsRef<Path>) -> Result<i32> {
                 s => s,
             }
         }
-        Ok(total)
+        enable_parser = match enable_parser.next(b) {
+            EnableParserState::CloseParen(b) => {
+                enabled = b;
+                EnableParserState::Empty
+            }
+            s => s,
+        }
+    }
+    Ok(total)
+}
+
+fn chars(filename: impl AsRef<Path>) -> Result<impl Iterator<Item = char>> {
+    if let Ok(file) = File::open(filename) {
+        let iter = io::BufReader::new(file)
+            .bytes()
+            .flatten()
+            .map(|b| char::from_u32(b.into()))
+            .flatten();
+        Ok(iter)
     } else {
         Err(Day3Error)
     }
-}
-
-pub fn solve2(filename: impl AsRef<Path>) -> Result<usize> {
-    Ok(0)
 }
