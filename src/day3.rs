@@ -37,9 +37,9 @@ impl ParserState {
             ('(', Self::L) => Self::OpenParen,
             (x, Self::OpenParen) if char::is_ascii_digit(&x) => Self::FirstNumber(x.to_string()),
             (x, Self::FirstNumber(s)) if char::is_ascii_digit(&x) => {
-                let mut i_dont_understand_refs = s.clone();
-                i_dont_understand_refs.push(x);
-                Self::FirstNumber(i_dont_understand_refs)
+                let mut s = s.to_owned();
+                s.push(x);
+                Self::FirstNumber(s)
             }
             (',', Self::FirstNumber(s)) => match s.parse::<i32>() {
                 Ok(a) => Self::Comma(a),
@@ -49,9 +49,9 @@ impl ParserState {
                 Self::SecondNumber(*n, x.to_string())
             }
             (x, Self::SecondNumber(a, s)) if char::is_ascii_digit(&x) => {
-                let mut i_dont_understand_refs = s.clone();
-                i_dont_understand_refs.push(x);
-                Self::SecondNumber(*a, i_dont_understand_refs)
+                let mut s = s.to_owned();
+                s.push(x);
+                Self::SecondNumber(*a, s)
             }
             (')', Self::SecondNumber(a, s)) => match s.parse::<i32>() {
                 Ok(b) => Self::CloseParen(a * b),
