@@ -1,7 +1,22 @@
-mod day3;
+mod day4;
 mod util;
 
 fn main() {
-    println!("Part 1: {}", day3::solve1("./data/day3.txt").unwrap());
-    println!("Part 2: {}", day3::solve2("./data/day3.txt").unwrap());
+    println!("Part 1: {}", day4::solve1("./data/day4.txt"));
 }
+
+/*
+....XXMAS.
+.SAMXMS...
+...S..A...
+..A.A.MS.X
+XMASAMX.MM
+X.....XA.A
+S.S.S.S.SS
+.A.A.A.A.A
+..M.M.M.MM
+.X.X.XMASX
+
+
+
+*/
