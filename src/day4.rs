@@ -2,7 +2,7 @@ use std::{path::Path, usize};
 
 use crate::util;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum Value {
     Unknown,
     X,
@@ -23,6 +23,15 @@ impl From<char> for Value {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug)]
 struct Square {
     row: usize,
     col: usize,
@@ -38,6 +47,19 @@ impl Puzzle {
             row: 0,
             col: 0,
         }
+    }
+
+    /// walk starts at a square and then attempts to apply the directions to
+    /// move around the puzzle. Returns None if a move goes off the board.
+    fn walk(&self, sq: &Square, dirs: impl Iterator<Item = Direction>) -> Option<Square> {
+        dirs.fold(Some((sq.row, sq.col)), |pos, d| match (pos, d) {
+            (Some((r, c)), Direction::Down) => r.checked_add(1).map(|r| (r, c)),
+            (Some((r, c)), Direction::Up) => r.checked_sub(1).map(|r| (r, c)),
+            (Some((r, c)), Direction::Left) => c.checked_sub(1).map(|c| (r, c)),
+            (Some((r, c)), Direction::Right) => c.checked_add(1).map(|c| (r, c)),
+            (None, _) => None,
+        })
+        .and_then(|(r, c)| self.at(r, c))
     }
 
     fn at(&self, row: usize, col: usize) -> Option<Square> {
@@ -94,6 +116,44 @@ impl Puzzle {
 
         found
     }
+
+    /// count how many times we can find M-A-S in Xs starting from this position
+    fn count_x_mas(&self, sq: &Square) -> i32 {
+        if sq.value != Value::A {
+            return 0;
+        }
+
+        // upper left and lower right need to be M,S
+        // lower left and upper right need to be M,S
+        /*
+         M S
+          A
+         M S
+        */
+        let res: Vec<_> = [
+            [Direction::Up, Direction::Left],
+            [Direction::Down, Direction::Right],
+            [Direction::Up, Direction::Right],
+            [Direction::Down, Direction::Left],
+        ]
+        .iter()
+        .map(|dirs| self.walk(sq, dirs.iter().map(|d| *d)))
+        .map(|r| r.map(|s| s.value))
+        .flatten()
+        .collect();
+
+        if res.len() != 4 {
+            return 0;
+        }
+
+        match (&res[0], &res[1], &res[2], &res[3]) {
+            (Value::M, Value::S, Value::M, Value::S) => 1,
+            (Value::S, Value::M, Value::M, Value::S) => 1,
+            (Value::M, Value::S, Value::S, Value::M) => 1,
+            (Value::S, Value::M, Value::S, Value::M) => 1,
+            _ => 0,
+        }
+    }
 }
 
 struct PuzzleIterator<'a> {
@@ -132,4 +192,15 @@ pub fn solve1(filename: impl AsRef<Path>) -> i32 {
     );
 
     puzzle.scan().map(|s| puzzle.count_xmas(s)).sum()
+}
+
+pub fn solve2(filename: impl AsRef<Path>) -> i32 {
+    let puzzle = Puzzle(
+        util::read_lines(filename)
+            .expect("could not read")
+            .flatten()
+            .collect(),
+    );
+
+    puzzle.scan().map(|s| puzzle.count_x_mas(&s)).sum()
 }
